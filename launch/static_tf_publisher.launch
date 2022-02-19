@@ -1,0 +1,14 @@
+<launch>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="vehicle_to_map_tf"
+      args="0.0 0.0 0.0 0.0 0.0 0.0 1.0 map vehicle"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="radar_left_45_to_vehicle_tf"
+      args="2.1939 0.65985 -1.2777 0.270597 0.653282 0.653282 0.270597 vehicle radar_left_45"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="radar_right_45_to_vehicle_tf"
+      args="2.1730 -0.6690 -1.2777 0.653282 0.270597 0.270597 0.653282 vehicle radar_right_45"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="radar_front_center_to_vehicle_tf"
+      args="2.341 -0.015 -1.278 0.5 0.5 0.5 0.5 vehicle front_center_facing"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="imu_to_vehicle_tf"
+      args="-0.4100 0.3900 -0.1590 1.0 0.0 0.0 0.0 vehicle imu"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="imu_to_gps_tf"
+      args="-0.4985 -0.03 0.026 1.0 0.0 0.0 0.0 gps imu"/>
+</launch>
