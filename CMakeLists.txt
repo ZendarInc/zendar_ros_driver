@@ -7,6 +7,10 @@ set(CMAKE_C_STANDARD 11)
 find_package(catkin REQUIRED COMPONENTS image_transport message_generation roscpp std_msgs sensor_msgs tf2_ros diagnostic_updater)
 find_package(PCL REQUIRED COMPONENTS common)
 
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "cmake")
+find_package(Gflags REQUIRED)
+find_package(Gflags REQUIRED)
+
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
@@ -104,6 +108,8 @@ include_directories(
   include
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
+  ${GFLAGS_INCLUDE_DIRS}
+  ${GLOG_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -140,6 +146,8 @@ target_link_libraries(
   ${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${PCL_IO_LIBRARIES}
+  ${GFLAGS_LIBRARIES}
+  ${GLOG_LIBRARIES}
 )
 
 #############
