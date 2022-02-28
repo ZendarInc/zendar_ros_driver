@@ -148,6 +148,7 @@ target_link_libraries(
   ${PCL_IO_LIBRARIES}
   ${GFLAGS_LIBRARIES}
   ${GLOG_LIBRARIES}
+  zen_api2
 )
 
 #############
