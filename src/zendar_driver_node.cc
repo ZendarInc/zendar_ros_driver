@@ -24,6 +24,7 @@
 namespace zen {
 namespace {
 constexpr int loop_rate_Hz = 100;
+constexpr size_t log_msg_queue = 200;
 }  // namespace
 
 
@@ -45,8 +46,10 @@ ZendarDriverNode::ZendarDriverNode(
 
   api::ZenApi::SubscribeImages();
   api::ZenApi::SubscribeTrackerStates();
+  // increase size of queue for log messages as they can be quick
+  api::ZenApi::SubscribeLogMessages(log_msg_queue);
   api::ZenApi::SubscribeTracklogs();
-  api::ZenApi::SubscribeLogMessages();
+  api::ZenApi::SubscribeHousekeepingReports();
 
   image_transport
       = std::make_unique<image_transport::ImageTransport>(node);
@@ -54,10 +57,11 @@ ZendarDriverNode::ZendarDriverNode(
 
 ZendarDriverNode::~ZendarDriverNode() {
   // graceful exit once done
-  api::ZenApi::UnsubscribeTrackerStates();
   api::ZenApi::UnsubscribeImages();
+  api::ZenApi::UnsubscribeTrackerStates();
   api::ZenApi::UnsubscribeLogMessages();
   api::ZenApi::UnsubscribeTracklogs();
+  api::ZenApi::UnsubscribeHousekeepingReports();
   api::ZenApi::Release();
   api::ZenApi::Disconnect();
 }
@@ -151,59 +155,61 @@ void ZendarDriverNode::PublishLogs(ros::Publisher& log_publisher) {
 }
 
 void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher) {
-  auto next_tracklog = api::ZenApi::NextTracklog(api::ZenApi::NO_WAIT);
-  while (next_tracklog != nullptr) {
-    const auto& next_quality = next_tracklog->quality();
-    diagnostic_msgs::DiagnosticArray diagnostics_array;
-    diagnostic_msgs::DiagnosticStatus gps_status;
-    gps_status.name = "GPS Status";
-    gps_status.level = diagnostic_msgs::DiagnosticStatus::OK;
-    switch (next_quality.gps_status()) {
-    case (zpb::GpsFix::NO_FIX):
-      gps_status.message = "No Fix";
-      break;
-    case (zpb::GpsFix::TIME_ONLY):
-      gps_status.message = "Time Only";
-      break;
-    case (zpb::GpsFix::FIX_2D):
-      gps_status.message = "Fix 2D";
-      break;
-    case (zpb::GpsFix::FIX_3D):
-      gps_status.message = "Fix 3D";
-      break;
-    case (zpb::GpsFix::SBAS):
-      gps_status.message = "SBAS";
-      break;
-    default:
-      gps_status.message = "Unknown GPS Status";
-    }
+  auto next_hk = api::ZenApi::NextHousekeepingReport(api::ZenApi::NO_WAIT);
+  while (next_hk != nullptr) {
+    if (next_hk->report_case() == zpb::telem::HousekeepingReport::kGpsStatus) {
+      const auto& next_position_quality = next_hk->gps_status().qos();
+      diagnostic_msgs::DiagnosticArray diagnostics_array;
+      diagnostic_msgs::DiagnosticStatus gps_status;
+      gps_status.name = "GPS Status";
+      gps_status.level = diagnostic_msgs::DiagnosticStatus::OK;
+      switch (next_position_quality.gps_status()) {
+      case (zpb::GpsFix::NO_FIX):
+        gps_status.message = "No Fix";
+        break;
+      case (zpb::GpsFix::TIME_ONLY):
+        gps_status.message = "Time Only";
+        break;
+      case (zpb::GpsFix::FIX_2D):
+        gps_status.message = "Fix 2D";
+        break;
+      case (zpb::GpsFix::FIX_3D):
+        gps_status.message = "Fix 3D";
+        break;
+      case (zpb::GpsFix::SBAS):
+        gps_status.message = "SBAS";
+        break;
+      default:
+        gps_status.message = "Unknown GPS Status";
+      }
 
-    diagnostic_msgs::KeyValue num_sats;
-    num_sats.key = "Number of satellites";
-    num_sats.value = std::to_string(next_quality.satellite_count());
-    gps_status.values.push_back(num_sats);
-    diagnostics_array.status.push_back(gps_status);
+      diagnostic_msgs::KeyValue num_sats;
+      num_sats.key = "Number of satellites";
+      num_sats.value = std::to_string(next_position_quality.satellite_count());
+      gps_status.values.push_back(num_sats);
+      diagnostics_array.status.push_back(gps_status);
 
-    diagnostic_msgs::DiagnosticStatus ins_status;
-    ins_status.name = "INS Status";
-    ins_status.level = diagnostic_msgs::DiagnosticStatus::OK;
-    switch (next_quality.ins_status()) {
-    case (zpb::data::InsMode::NOT_TRACKING):
-      ins_status.message = "Not Tracking";
-      break;
-    case (zpb::data::InsMode::ALIGNING):
-      ins_status.message = "Aligning";
-      break;
-    case (zpb::data::InsMode::TRACKING):
-      ins_status.message = "Tracking";
-      break;
-    default:
-      ins_status.message = "Unknown INS Status";
+      diagnostic_msgs::DiagnosticStatus ins_status;
+      ins_status.name = "INS Status";
+      ins_status.level = diagnostic_msgs::DiagnosticStatus::OK;
+      switch (next_position_quality.ins_status()) {
+      case (zpb::data::InsMode::NOT_TRACKING):
+        ins_status.message = "Not Tracking";
+        break;
+      case (zpb::data::InsMode::ALIGNING):
+        ins_status.message = "Aligning";
+        break;
+      case (zpb::data::InsMode::TRACKING):
+        ins_status.message = "Tracking";
+        break;
+      default:
+        ins_status.message = "Unknown INS Status";
+      }
+      diagnostics_array.status.push_back(ins_status);
+      // diagnostics_array.header.stamp = ros::Time(next_hk->timestamp());
+      pose_quality_publisher.publish(diagnostics_array);
     }
-    diagnostics_array.status.push_back(ins_status);
-    diagnostics_array.header.stamp = ros::Time(next_tracklog->timestamp());
-    pose_quality_publisher.publish(diagnostics_array);
-    next_tracklog = api::ZenApi::NextTracklog(api::ZenApi::NO_WAIT);
+    next_hk = api::ZenApi::NextHousekeepingReport(api::ZenApi::NO_WAIT);
   }
 }
 
