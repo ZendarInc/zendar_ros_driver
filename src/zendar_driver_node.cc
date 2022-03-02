@@ -16,10 +16,14 @@
 #include <diagnostic_msgs/DiagnosticStatus.h>
 #include <diagnostic_msgs/KeyValue.h>
 #include <rosgraph_msgs/Log.h>
-// #include <opencv2/imgproc/imgproc.hpp>
-// #include <cv_bridge/cv_bridge.h>
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 #include "zendar_ros_driver/zendar_point.h"
+#include "zendar_ros_driver/zendar_structs.h"
 
 namespace zen {
 namespace {
@@ -66,13 +70,69 @@ ZendarDriverNode::~ZendarDriverNode() {
   api::ZenApi::Disconnect();
 }
 
+std::array<std::uint32_t, 2> ZendarDriverNode::FindMaxAndMin(const std::uint32_t* data_real, const size_t num_iter) {
+  std::array<std::uint32_t, 2> max_min = {0, UINT_MAX};
+  for (size_t i = 0; i < num_iter; ++i) {
+    if (data_real[i] > max_min[0]) {
+      max_min[0] = data_real[i];
+    }
+    if (data_real[i] < max_min[1]) {
+      if (data_real[i] != 0) {
+        max_min[1] = data_real[i];
+      }
+    }
+  }
+  return max_min;
+}
+
 void ZendarDriverNode::PublishImage(
     std::unordered_map<std::string, image_transport::Publisher>* image_publishers) {
   auto image = api::ZenApi::NextImage(api::ZenApi::NO_WAIT);
   while (image != nullptr) {
-  std::unordered_map<std::string, image_transport::Publisher>::iterator image_publisher = image_publishers->find(image->meta().serial());
+    std::unordered_map<std::string, image_transport::Publisher>::iterator image_publisher = image_publishers->find(image->meta().serial());
     if (image_publisher == image_publishers->end()) {
       image_publishers->emplace(std::make_pair(image->meta().serial(), image_transport->advertise("image_" + image->meta().serial(), 1)));
+    }
+    const auto& data = image->cartesian().data();
+    if (data.type() != zpb::data::ImageDataCartesian_Type_REAL_32U) {
+      ROS_WARN("Only REAL_32U image types are supported. Image type is incompatible");
+    }
+    else {
+      const std::uint32_t* data_real = (const std::uint32_t*)data.data().c_str();
+      size_t num_iter = data.data().size() / sizeof(std::uint32_t);
+
+      std::array<std::uint32_t, 2> max_min = FindMaxAndMin(data_real, num_iter);
+      cv::Mat frame(data.rows(), data.cols(), CV_8UC3);
+      float max_log = std::log((float)max_min[0]);
+      float min_log = std::log((float)max_min[1]);
+      float scale_factor_log = (max_log - min_log) / 255;
+      for (size_t row = 0; row < data.rows(); ++row) {
+        for (size_t col = 0; col < data.cols(); ++col) {
+          // ROS_WARN("%f, %f, %f", max_log, min_log, scale_factor_log);
+          cv::Vec3b color;
+          if (*data_real == 0) {
+            color[0] = 0;
+            color[1] = 0;
+            color[2] = 0;
+          } else {
+            float mag_log = std::log((float)(*data_real));
+            // ROS_WARN("mag_log: %f", mag_log);
+            color[0] = 0;
+            // color[1] = 100;
+            color[2] = 0;
+            color[1] = (uint8_t)((mag_log - min_log) / scale_factor_log);
+            // ROS_WARN("%f", (mag_log - min_log) / scale_factor_log);
+          }
+          frame.at<cv::Vec3b>((int)row, (int)col) = color;
+          data_real++;
+        }
+      }
+      cv::flip(frame, frame, 0);
+      cv::rotate(frame, frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+      auto image_out = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame).toImageMsg();
+      image_out->header.frame_id = "vehicle";
+      image_out->header.stamp = ros::Time::now();
+      image_publishers->at(image->meta().serial()).publish(image_out);
     }
     image = api::ZenApi::NextImage(api::ZenApi::NO_WAIT);
   }
