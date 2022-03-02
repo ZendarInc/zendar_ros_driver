@@ -27,7 +27,7 @@ public:
 private:
   ros::NodeHandle node;
   std::unique_ptr<image_transport::ImageTransport> image_transport;
-
+  std::array<std::uint32_t, 2> FindMaxAndMin(const std::uint32_t* data_real, const size_t num_iter);
   void PublishPointCloud(
     std::unordered_map<std::string, ros::Publisher>* cloud_publishers,
     std::unordered_map<std::string, ros::Publisher>* cloud_metadata_publishers);
