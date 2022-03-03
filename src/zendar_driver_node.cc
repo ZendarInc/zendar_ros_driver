@@ -121,8 +121,8 @@ void ZendarDriverNode::PublishImage(
       }
 
       cv::Mat frame(data.rows(), data.cols(), CV_8UC1);
-      for (size_t row = 0; row < data.rows(); ++row) {
-        for (size_t col = 0; col < data.cols(); ++col) {
+      for (size_t col = 0; col < data.cols(); ++col) {
+        for (size_t row = 0; row < data.rows(); ++row) {
           float scaled_data = ScaleMagToImage(*data_real, min_median_max, max_scaled_mag);
           frame.at<uint8_t>((int)row, (int)col) = (uint8_t)(scaled_data * 255 / M_PI_2);
           data_real++;
@@ -131,9 +131,9 @@ void ZendarDriverNode::PublishImage(
       cv::Mat colored_frame(data.rows(), data.cols(), CV_8UC3);
       cv::applyColorMap(frame, colored_frame, cv::COLORMAP_INFERNO);
       cv::flip(colored_frame, colored_frame, 0);
-      cv::rotate(colored_frame, colored_frame, cv::ROTATE_90_COUNTERCLOCKWISE);
+      cv::flip(colored_frame, colored_frame, 1);
       auto image_out = cv_bridge::CvImage(std_msgs::Header(), "bgr8", colored_frame).toImageMsg();
-      
+
       image_out->header.frame_id = "vehicle";
       image_out->header.stamp = ros::Time(image->meta().timestamp());
       image_publishers->at(image->meta().serial()).publish(image_out);
