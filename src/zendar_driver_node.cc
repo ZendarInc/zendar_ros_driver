@@ -14,7 +14,7 @@ constexpr size_t log_msg_queue = 200;
 constexpr size_t image_downsampling_factor = 5;
 constexpr float im_dyn_range_max = 1000.0; // 60dB dynamic range
 constexpr float im_dyn_range_min = 562.0; // 55dB dynamic range
-constexpr float atan_scale_factor = std::tan(0.99 * M_PI_2); // max value of image set to 99% of atan's output 
+constexpr float atan_scale_factor = std::tan(0.99 * M_PI_2); // max value of image set to 99% of atan's output
 }  // namespace
 
 
