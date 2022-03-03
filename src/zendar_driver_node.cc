@@ -79,12 +79,13 @@ float ZendarDriverNode::ScaleMagToImage(const uint32_t& magnitude, const std::ar
     return output;
   }
   else {
-    output = std::atan(((scaled_mag - 1) * atan_scale_factor / (max_value - 1)));
+    // subtracting 1 to center 0dB SNR to 0
+    output = std::atan(((scaled_mag - 1.0) * atan_scale_factor / (max_value - 1.0)));
   }
   return output;
 }
 
-std::vector<uint32_t> ZendarDriverNode::DownsampleArray(const uint32_t* data, const size_t size, const size_t factor) {
+std::vector<uint32_t> ZendarDriverNode::DownsampleArray(const uint32_t* data, const size_t& size, const size_t& factor) {
   size_t output_size = size / factor;
   std::vector<uint32_t> output(output_size);
   for (size_t i = 0; i < output_size; ++i) {
@@ -108,10 +109,12 @@ void ZendarDriverNode::PublishImage(
     }
     else {
       const uint32_t* data_real = (const uint32_t*)data.data().c_str();
+      ROS_ASSERT(data.data().size() == sizeof(uint32_t) * data.cols() * data.rows());
       size_t num_iter = data.data().size() / sizeof(uint32_t);
       const std::vector<uint32_t> downsampled_image = DownsampleArray(data_real, num_iter, image_downsampling_factor);
       const std::array<float, 3> min_median_max = FindMinMedianMax(downsampled_image);
 
+      // if max value lies outside limits, clip limits to max and min
       float max_scaled_mag = min_median_max[2] / min_median_max[1];
       if (max_scaled_mag < im_dyn_range_min) {
         max_scaled_mag = im_dyn_range_min;
@@ -123,7 +126,7 @@ void ZendarDriverNode::PublishImage(
       cv::Mat frame(data.rows(), data.cols(), CV_8UC1);
       for (size_t col = 0; col < data.cols(); ++col) {
         for (size_t row = 0; row < data.rows(); ++row) {
-          float scaled_data = ScaleMagToImage(*data_real, min_median_max, max_scaled_mag);
+          const float scaled_data = ScaleMagToImage(*data_real, min_median_max, max_scaled_mag);
           frame.at<uint8_t>((int)row, (int)col) = (uint8_t)(scaled_data * 255 / M_PI_2);
           data_real++;
         }
@@ -278,10 +281,6 @@ void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher
 }
 
 void ZendarDriverNode::PublishPose(ros::Publisher& pose_publisher) {
-
-  // we use tracker state proto instead of tracklog is because
-  // tracker state has position and orientation aligned with
-  // the point cloud.
   auto next_tracklog = api::ZenApi::NextTracklog(api::ZenApi::NO_WAIT);
   while (next_tracklog != nullptr) {
     const auto& next_attitude = next_tracklog->attitude();
