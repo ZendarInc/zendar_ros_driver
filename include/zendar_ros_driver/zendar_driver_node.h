@@ -1,14 +1,8 @@
 #pragma once
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-
-#include <ros/ros.h>
-#include <image_transport/image_transport.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <image_transport/image_transport.h>
+#include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 
 #include <zendar/api/api.h>
@@ -27,7 +21,9 @@ public:
 private:
   ros::NodeHandle node;
   std::unique_ptr<image_transport::ImageTransport> image_transport;
-  std::array<std::uint32_t, 2> FindMaxAndMin(const std::uint32_t* data_real, const size_t num_iter);
+  std::array<float, 3> FindMinMedianMax(const std::vector<uint32_t>& sorted_array);
+  float ScaleMagToImage(const uint32_t& magnitude, const std::array<float, 3>& min_median_max, const float& max_value);
+  std::vector<uint32_t> DownsampleArray(const uint32_t* data, const size_t size, const size_t factor);
   void PublishPointCloud(
     std::unordered_map<std::string, ros::Publisher>* cloud_publishers,
     std::unordered_map<std::string, ros::Publisher>* cloud_metadata_publishers);
