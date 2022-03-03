@@ -12,20 +12,16 @@ namespace {
 constexpr int loop_rate_Hz = 100;
 constexpr size_t log_msg_queue = 200;
 constexpr size_t image_downsampling_factor = 5;
-constexpr float im_dyn_range_max = 1000.0; // 60dB dynamic range
-constexpr float im_dyn_range_min = 562.0; // 55dB dynamic range
-constexpr float atan_scale_factor = std::tan(0.99 * M_PI_2); // max value of image set to 99% of atan's output
+constexpr float im_dyn_range_max = 1000.0;  // 60dB dynamic range
+constexpr float im_dyn_range_min = 562.0;   // 55dB dynamic range
+constexpr float atan_scale_factor =
+    std::tan(0.99 * M_PI_2);  // max value of image set to 99% of atan's output
 }  // namespace
 
-
-ZendarDriverNode::ZendarDriverNode(
-  const ros::NodeHandle& node,
-  const std::string& url,
-  int argc,
-  char* argv[]
-)
-  : node(node)
-{
+ZendarDriverNode::ZendarDriverNode(const ros::NodeHandle& node,
+                                   const std::string& url, int argc,
+                                   char* argv[])
+    : node(node) {
   api::ZenApi::Init(&argc, &argv);
 
   auto default_telem_ports = api::ZenApi::TelemPortOptions();
@@ -41,8 +37,7 @@ ZendarDriverNode::ZendarDriverNode(
   api::ZenApi::SubscribeTracklogs();
   api::ZenApi::SubscribeHousekeepingReports();
 
-  image_transport
-      = std::make_unique<image_transport::ImageTransport>(node);
+  image_transport = std::make_unique<image_transport::ImageTransport>(node);
 }
 
 ZendarDriverNode::~ZendarDriverNode() {
@@ -56,78 +51,92 @@ ZendarDriverNode::~ZendarDriverNode() {
   api::ZenApi::Disconnect();
 }
 
-std::array<float, 3> ZendarDriverNode::FindMinMedianMax(const std::vector<uint32_t>& sorted_array) {
+std::array<float, 3> ZendarDriverNode::FindMinMedianMax(
+    const std::vector<uint32_t>& sorted_array) {
   std::array<float, 3> min_median_max;
   for (size_t i = 0; i < sorted_array.size(); ++i) {
     if (sorted_array[i] == 0) {
       continue;
-    }
-    else {
-      min_median_max[0] = (float)sorted_array[i];
-      min_median_max[1] = (float)sorted_array[(sorted_array.size()-i)/2];
-      min_median_max[2] = (float)sorted_array.back();
+    } else {
+      min_median_max[0] = static_cast<float>(sorted_array[i]);
+      min_median_max[1] =
+          static_cast<float>(sorted_array[(sorted_array.size() - i) / 2]);
+      min_median_max[2] = static_cast<float>(sorted_array.back());
       break;
     }
   }
   return min_median_max;
 }
 
-float ZendarDriverNode::ScaleMagToImage(const uint32_t& magnitude, const std::array<float, 3>& min_median_max, const float& max_value) {
-  float scaled_mag = (float)magnitude / min_median_max[1];
+float ZendarDriverNode::ScaleMagToImage(
+    const uint32_t& magnitude, const std::array<float, 3>& min_median_max,
+    const float& max_value) {
+  float scaled_mag = static_cast<float>(magnitude / min_median_max[1]);
   float output = 0.0;
   if (scaled_mag < 1.0) {
     return output;
-  }
-  else {
+  } else {
     // subtracting 1 to center 0dB SNR to 0
-    output = std::atan(((scaled_mag - 1.0) * atan_scale_factor / (max_value - 1.0)));
+    output =
+        std::atan(((scaled_mag - 1.0) * atan_scale_factor / (max_value - 1.0)));
   }
   return output;
 }
 
-std::vector<uint32_t> ZendarDriverNode::DownsampleArray(const uint32_t* data, const size_t& size, const size_t& factor) {
+std::vector<uint32_t> ZendarDriverNode::DownsampleArray(const uint32_t* data,
+                                                        const size_t& size,
+                                                        const size_t& factor) {
   size_t output_size = size / factor;
   std::vector<uint32_t> output(output_size);
   for (size_t i = 0; i < output_size; ++i) {
-    output[i] = data[i*factor];
+    output[i] = data[i * factor];
   }
   std::sort(output.begin(), output.end());
   return output;
 }
 
 void ZendarDriverNode::PublishImage(
-    std::unordered_map<std::string, image_transport::Publisher>* image_publishers) {
+    std::unordered_map<std::string, image_transport::Publisher>*
+        image_publishers) {
   auto image = api::ZenApi::NextImage(api::ZenApi::NO_WAIT);
   while (image != nullptr) {
-    std::unordered_map<std::string, image_transport::Publisher>::iterator image_publisher = image_publishers->find(image->meta().serial());
+    std::unordered_map<std::string, image_transport::Publisher>::iterator
+        image_publisher = image_publishers->find(image->meta().serial());
     if (image_publisher == image_publishers->end()) {
-      image_publishers->emplace(std::make_pair(image->meta().serial(), image_transport->advertise("image_" + image->meta().serial(), 1)));
+      image_publishers->emplace(std::make_pair(
+          image->meta().serial(),
+          image_transport->advertise("image_" + image->meta().serial(), 1)));
     }
     const auto& data = image->cartesian().data();
     if (data.type() != zpb::data::ImageDataCartesian_Type_REAL_32U) {
-      ROS_WARN("Only REAL_32U image type is supported. Current image type incompatible.");
-    }
-    else {
+      ROS_WARN(
+          "Only REAL_32U image type is supported. Current image type "
+          "incompatible.");
+    } else {
       const uint32_t* data_real = (const uint32_t*)data.data().c_str();
-      ROS_ASSERT(data.data().size() == sizeof(uint32_t) * data.cols() * data.rows());
+      ROS_ASSERT(data.data().size() ==
+                 sizeof(uint32_t) * data.cols() * data.rows());
       size_t num_iter = data.data().size() / sizeof(uint32_t);
-      const std::vector<uint32_t> downsampled_image = DownsampleArray(data_real, num_iter, image_downsampling_factor);
-      const std::array<float, 3> min_median_max = FindMinMedianMax(downsampled_image);
+      const std::vector<uint32_t> downsampled_image =
+          DownsampleArray(data_real, num_iter, image_downsampling_factor);
+      const std::array<float, 3> min_median_max =
+          FindMinMedianMax(downsampled_image);
 
       // if max value lies outside limits, clip limits to max and min
       float max_scaled_mag = min_median_max[2] / min_median_max[1];
       if (max_scaled_mag < im_dyn_range_min) {
         max_scaled_mag = im_dyn_range_min;
-      }
-      else if (max_scaled_mag > im_dyn_range_max) {
+      } else if (max_scaled_mag > im_dyn_range_max) {
         max_scaled_mag = im_dyn_range_max;
       }
 
       cv::Mat frame(data.rows(), data.cols(), CV_8UC1);
       for (size_t col = 0; col < data.cols(); ++col) {
         for (size_t row = 0; row < data.rows(); ++row) {
-          const float scaled_data = ScaleMagToImage(*data_real, min_median_max, max_scaled_mag);
-          frame.at<uint8_t>((int)row, (int)col) = (uint8_t)(scaled_data * 255 / M_PI_2);
+          const float scaled_data =
+              ScaleMagToImage(*data_real, min_median_max, max_scaled_mag);
+          frame.at<uint8_t>(static_cast<int>(row), static_cast<int>(col)) =
+              (uint8_t)(scaled_data * 255 / M_PI_2);
           data_real++;
         }
       }
@@ -135,7 +144,9 @@ void ZendarDriverNode::PublishImage(
       cv::applyColorMap(frame, colored_frame, cv::COLORMAP_INFERNO);
       cv::flip(colored_frame, colored_frame, 0);
       cv::flip(colored_frame, colored_frame, 1);
-      auto image_out = cv_bridge::CvImage(std_msgs::Header(), "bgr8", colored_frame).toImageMsg();
+      auto image_out =
+          cv_bridge::CvImage(std_msgs::Header(), "bgr8", colored_frame)
+              .toImageMsg();
 
       image_out->header.frame_id = "vehicle";
       image_out->header.stamp = ros::Time(image->meta().timestamp());
@@ -147,21 +158,31 @@ void ZendarDriverNode::PublishImage(
 
 void ZendarDriverNode::PublishPointCloud(
     std::unordered_map<std::string, ros::Publisher>* cloud_publishers,
-    std::unordered_map<std::string, ros::Publisher>* cloud_metadata_publishers) {
+    std::unordered_map<std::string, ros::Publisher>*
+        cloud_metadata_publishers) {
   auto cloud = api::ZenApi::NextTrackerState(api::ZenApi::NO_WAIT);
   while (cloud != nullptr) {
-    std::unordered_map<std::string, ros::Publisher>::iterator cloud_publisher = cloud_publishers->find(cloud->meta().serial());
+    std::unordered_map<std::string, ros::Publisher>::iterator cloud_publisher =
+        cloud_publishers->find(cloud->meta().serial());
     if (cloud_publisher == cloud_publishers->end()) {
-      cloud_publishers->emplace(std::make_pair(cloud->meta().serial(), node.advertise<sensor_msgs::PointCloud2>("points_" + cloud->meta().serial(), 1)));
-      cloud_metadata_publishers->emplace(std::make_pair(cloud->meta().serial(), node.advertise<geometry_msgs::PoseStamped>("points_metadata_" + cloud->meta().serial(), 1)));
+      cloud_publishers->emplace(std::make_pair(
+          cloud->meta().serial(), node.advertise<sensor_msgs::PointCloud2>(
+                                      "points_" + cloud->meta().serial(), 1)));
+      cloud_metadata_publishers->emplace(
+          std::make_pair(cloud->meta().serial(),
+                         node.advertise<geometry_msgs::PoseStamped>(
+                             "points_metadata_" + cloud->meta().serial(), 1)));
     }
-    cloud_publishers->at(cloud->meta().serial()).publish(ConvertToPointCloud2(*cloud));
-    cloud_metadata_publishers->at(cloud->meta().serial()).publish(ConvertToPoseStamped(*cloud));
+    cloud_publishers->at(cloud->meta().serial())
+        .publish(ConvertToPointCloud2(*cloud));
+    cloud_metadata_publishers->at(cloud->meta().serial())
+        .publish(ConvertToPoseStamped(*cloud));
     cloud = api::ZenApi::NextTrackerState(api::ZenApi::NO_WAIT);
   }
 }
 
-geometry_msgs::PoseStamped ZendarDriverNode::ConvertToPoseStamped(const zpb::tracker::message::TrackerState& cloud_data) {
+geometry_msgs::PoseStamped ZendarDriverNode::ConvertToPoseStamped(
+    const zpb::tracker::message::TrackerState& cloud_data) {
   const auto& attitude_proto = cloud_data.meta().attitude();
   const auto& position_proto = cloud_data.meta().position();
 
@@ -182,33 +203,32 @@ geometry_msgs::PoseStamped ZendarDriverNode::ConvertToPoseStamped(const zpb::tra
   return pose_stamped_msg;
 }
 
-
-void ZendarDriverNode::PublishLogs(ros::Publisher& log_publisher) {
+void ZendarDriverNode::PublishLogs(const ros::Publisher& log_publisher) {
   auto next_log = api::ZenApi::NextLogMessage(api::ZenApi::NO_WAIT);
   while (next_log != nullptr) {
     rosgraph_msgs::Log log_msg;
     // severity is set using the glog severity levels
     switch (next_log->severity()) {
-    // GLOG_INFO
-    case 0:
-      log_msg.level = 2;
-      break;
-    // GLOG_WARNING
-    case 1:
-      log_msg.level = 4;
-      break;
-    case 2:
-    // GLOG_ERROR
-      log_msg.level = 8;
-      break;
-    // GLOG_FATAL
-    case 3:
-      log_msg.level = 16;
-      break;
-    // Set the log level to FATAL for other levels, since they should all be
-    // more severe.
-    default:
-      log_msg.level = 16;
+      // GLOG_INFO
+      case 0:
+        log_msg.level = 2;
+        break;
+      // GLOG_WARNING
+      case 1:
+        log_msg.level = 4;
+        break;
+      case 2:
+        // GLOG_ERROR
+        log_msg.level = 8;
+        break;
+      // GLOG_FATAL
+      case 3:
+        log_msg.level = 16;
+        break;
+      // Set the log level to FATAL for other levels, since they should all be
+      // more severe.
+      default:
+        log_msg.level = 16;
     }
     log_msg.name = next_log->base_filename();
     log_msg.msg = next_log->message();
@@ -221,7 +241,8 @@ void ZendarDriverNode::PublishLogs(ros::Publisher& log_publisher) {
   }
 }
 
-void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher) {
+void ZendarDriverNode::PublishPoseQuality(
+    const ros::Publisher& pose_quality_publisher) {
   auto next_hk = api::ZenApi::NextHousekeepingReport(api::ZenApi::NO_WAIT);
   while (next_hk != nullptr) {
     if (next_hk->report_case() == zpb::telem::HousekeepingReport::kGpsStatus) {
@@ -231,23 +252,23 @@ void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher
       gps_status.name = "GPS Status";
       gps_status.level = diagnostic_msgs::DiagnosticStatus::OK;
       switch (next_position_quality.gps_status()) {
-      case (zpb::GpsFix::NO_FIX):
-        gps_status.message = "No Fix";
-        break;
-      case (zpb::GpsFix::TIME_ONLY):
-        gps_status.message = "Time Only";
-        break;
-      case (zpb::GpsFix::FIX_2D):
-        gps_status.message = "Fix 2D";
-        break;
-      case (zpb::GpsFix::FIX_3D):
-        gps_status.message = "Fix 3D";
-        break;
-      case (zpb::GpsFix::SBAS):
-        gps_status.message = "SBAS";
-        break;
-      default:
-        gps_status.message = "Unknown GPS Status";
+        case (zpb::GpsFix::NO_FIX):
+          gps_status.message = "No Fix";
+          break;
+        case (zpb::GpsFix::TIME_ONLY):
+          gps_status.message = "Time Only";
+          break;
+        case (zpb::GpsFix::FIX_2D):
+          gps_status.message = "Fix 2D";
+          break;
+        case (zpb::GpsFix::FIX_3D):
+          gps_status.message = "Fix 3D";
+          break;
+        case (zpb::GpsFix::SBAS):
+          gps_status.message = "SBAS";
+          break;
+        default:
+          gps_status.message = "Unknown GPS Status";
       }
 
       diagnostic_msgs::KeyValue num_sats;
@@ -260,17 +281,17 @@ void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher
       ins_status.name = "INS Status";
       ins_status.level = diagnostic_msgs::DiagnosticStatus::OK;
       switch (next_position_quality.ins_status()) {
-      case (zpb::data::InsMode::NOT_TRACKING):
-        ins_status.message = "Not Tracking";
-        break;
-      case (zpb::data::InsMode::ALIGNING):
-        ins_status.message = "Aligning";
-        break;
-      case (zpb::data::InsMode::TRACKING):
-        ins_status.message = "Tracking";
-        break;
-      default:
-        ins_status.message = "Unknown INS Status";
+        case (zpb::data::InsMode::NOT_TRACKING):
+          ins_status.message = "Not Tracking";
+          break;
+        case (zpb::data::InsMode::ALIGNING):
+          ins_status.message = "Aligning";
+          break;
+        case (zpb::data::InsMode::TRACKING):
+          ins_status.message = "Tracking";
+          break;
+        default:
+          ins_status.message = "Unknown INS Status";
       }
       diagnostics_array.status.push_back(ins_status);
       // diagnostics_array.header.stamp = ros::Time(next_hk->timestamp());
@@ -280,7 +301,7 @@ void ZendarDriverNode::PublishPoseQuality(ros::Publisher& pose_quality_publisher
   }
 }
 
-void ZendarDriverNode::PublishPose(ros::Publisher& pose_publisher) {
+void ZendarDriverNode::PublishPose(const ros::Publisher& pose_publisher) {
   auto next_tracklog = api::ZenApi::NextTracklog(api::ZenApi::NO_WAIT);
   while (next_tracklog != nullptr) {
     const auto& next_attitude = next_tracklog->attitude();
@@ -311,12 +332,12 @@ void ZendarDriverNode::Run() {
   std::unordered_map<std::string, ros::Publisher> cloud_metadata_publishers;
   std::unordered_map<std::string, double> cloud_timestamps;
   std::unordered_map<std::string, double> image_timestamps;
-  ros::Publisher log_publisher
-    = node.advertise<rosgraph_msgs::Log>("/zpu_logs", 5);
-  ros::Publisher pose_quality_publisher
-    = node.advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 5);
-  ros::Publisher pose_publisher
-    = node.advertise<geometry_msgs::PoseStamped>("/pose", 5);
+  ros::Publisher log_publisher =
+      node.advertise<rosgraph_msgs::Log>("/zpu_logs", 5);
+  ros::Publisher pose_quality_publisher =
+      node.advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 5);
+  ros::Publisher pose_publisher =
+      node.advertise<geometry_msgs::PoseStamped>("/pose", 5);
   while (node.ok()) {
     PublishPointCloud(&cloud_publishers, &cloud_metadata_publishers);
     PublishImage(&image_publishers);
@@ -327,7 +348,8 @@ void ZendarDriverNode::Run() {
   }
 }
 
-sensor_msgs::PointCloud2 ZendarDriverNode::ConvertToPointCloud2(const zpb::tracker::message::TrackerState& cloud_data) {
+sensor_msgs::PointCloud2 ZendarDriverNode::ConvertToPointCloud2(
+    const zpb::tracker::message::TrackerState& cloud_data) {
   pcl::PointCloud<ZendarPoint> pointcloud;
   sensor_msgs::PointCloud2 cloud_msg;
 

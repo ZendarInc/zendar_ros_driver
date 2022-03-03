@@ -35,3 +35,19 @@ repos:
     hooks:
       - id: prettier
         exclude: main.yml
+
+  - repo: https://github.com/pre-commit/mirrors-autopep8
+    rev: v1.4.4
+    hooks:
+      - id: autopep8
+    name: autopep8-default
+    exclude: ()
+
+  - repo: https://github.com/bmorcos/pre-commit-hooks-cpp
+    rev: master
+    hooks:
+      - id: clang-format
+      - id: cpplint
+        args: [--filter=-legal/copyright]
+      - id: cppcheck
+        args: [--std=c++11, --std=c++14, --language=c++]
