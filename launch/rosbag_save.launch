@@ -1,0 +1,9 @@
+<launch>
+  <arg name="output_name" default="$(env HOME)/record.bag"/>
+  <node pkg="rosbag" type="record" name="record"
+    args="record -o $(arg output_name)
+            /rosout /rosout_agg /tf /tf_static /diagnostics /pose /zpu_logs
+            -e /zendar_ros_driver/points_(.*) /zendar_ros_driver/image_(.*)/compressed
+            /zendar_ros_driver/points_metadata_(.*)"
+  />
+</launch>
