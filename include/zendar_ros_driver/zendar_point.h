@@ -1,6 +1,5 @@
 #pragma once
 
-#include <stdint.h>
 #include <pcl/register_point_struct.h>
 
 namespace zen {

@@ -1,6 +1,5 @@
-#include <glog/logging.h>
 #include <ros/ros.h>
-#include <string>
+
 #include "zendar_ros_driver/zendar_driver_node.h"
 
 int main(int argc, char** argv) {
@@ -8,7 +7,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle node("~");
   std::string url;
   if (!node.getParam("url", url))
-    LOG(FATAL) << "IP address of ZPU was not provided";
+    ROS_FATAL("IP address of ZPU was not provided");
   zen::ZendarDriverNode converter(node, url, argc, argv);
   // loop until shut down
   converter.Run();
