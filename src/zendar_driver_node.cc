@@ -206,11 +206,13 @@ namespace zen {
 ZendarDriverNode::ZendarDriverNode(
   const std::shared_ptr<ros::NodeHandle> node,
   const std::string& url,
+  const float max_range,
   int argc,
   char* argv[]
 )
   : node(CHECK_NOTNULL(node))
   , url(url)
+  , max_range(max_range)
 {
   api::ZenApi::Init(&argc, &argv);
 
@@ -244,13 +246,19 @@ ZendarDriverNode::~ZendarDriverNode()
 void ZendarDriverNode::Run()
 {
   ros::Rate loop_rate(LOOP_RATE_HZ);
-
+  bool first_frame = true;
   while (node->ok()) {
     this->ProcessImages();
     this->ProcessPointClouds();
     this->ProcessPoseMessages();
     this->ProcessLogMessages();
     this->ProcessHousekeepingReports();
+    // Publish range markers, and ego vehicle once since they are latched topics
+    if (first_frame) {
+      this->ProcessRangeMarkers();
+      this->ProcessEgoVehicle();
+      first_frame = false;
+    }
     loop_rate.sleep();
   }
 }
@@ -309,6 +317,22 @@ ZendarDriverNode::ProcessPointClouds()
     pose_stamped.header.frame_id = "ECEF";
 
     this->points_metadata_pub.Publish(serial, pose_stamped);
+  }
+}
+
+void ZendarDriverNode::ProcessRangeMarkers()
+{
+  while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
+    auto range_markers = RangeMarkers(*tracker_state, max_range);
+    this->range_markers_pub.Publish(range_markers);
+  }
+}
+
+void ZendarDriverNode::ProcessEgoVehicle()
+{
+  while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
+    auto ego_vehicle = EgoVehicle(*tracker_state);
+    this->ego_vehicle_pub.Publish(ego_vehicle);
   }
 }
 

@@ -19,6 +19,7 @@ public:
   ZendarDriverNode(
     std::shared_ptr<ros::NodeHandle> node,
     const std::string& url,
+    const float max_range,
     int argc,
     char* argv[]
   );
@@ -34,6 +35,8 @@ private:
   void ProcessPoseMessages();
   void ProcessLogMessages();
   void ProcessHousekeepingReports();
+  void ProcessRangeMarkers();
+  void ProcessEgoVehicle();
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
 
@@ -50,6 +53,11 @@ private:
 
   ros::Publisher pose_quality_pub = this->node->advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 100);
 
+  // Create range marker, and ego vehicle publisher as latched topics
+  ros::Publisher range_markers_pub = node.advertise<nav_msgs::OccupancyGrid>("/range_markers", 1, true);
+  ros::Publisher ego_vehicle_pub = node.advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
+
   const std::string url;
+  const float max_range;
 };
 }  ///< \namespace zen

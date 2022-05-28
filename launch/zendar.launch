@@ -5,7 +5,9 @@
   <include file="$(find zendar_ros_driver)/launch/static_tf_publisher.launch"/>
   <!--START SAR AND POINTCLOUD-->
   <arg name="target_url" default="192.168.1.9"/>
+  <arg name="max_range" default="40"/>
   <node pkg="zendar_ros_driver" type="zendar_driver_node" name="zendar_driver_node">
     <param name="url" type="string" value="$(arg target_url)"/>
+    <param name="max_range" type="double" value="$(arg max_range)"/>
   </node>
 </launch>
