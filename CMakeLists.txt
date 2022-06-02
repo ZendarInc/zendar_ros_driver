@@ -136,6 +136,8 @@ add_executable(
   zendar_driver_node
   src/main.cc
   src/zendar_driver_node.cc
+  src/range_markers.cc
+  src/ego_vehicle.cc
 )
 
 ## Rename C++ executable without prefix
