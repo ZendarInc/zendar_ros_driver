@@ -3,18 +3,19 @@
 namespace zen {
 nav_msgs::OccupancyGrid RangeMarkers(float max_range){
   int num_circles = floor(max_range / 10);
+  float rounded_max_range = 10 * num_circles;
   // Define the width, and height of the image (in pixel). This way of 
   // computing the number of pixels is done since for a max_range of 40, a 
   // 1001x1001-pixel image provides a decent resolution, and all other values
   // such as the offset of the text to the range marker were choosen based on
   // this resolution.
-  int width = max_range / 40.0 * 1001;
-  int height = max_range / 40.0 * 1001;
+  int width = rounded_max_range / 40.0 * 1001;
+  int height = rounded_max_range / 40.0 * 1001;
 
   int additional_boundary = 100;
   int image_width = width + additional_boundary;
   int image_height = height + additional_boundary;
-  float resolution = 2 * max_range / (float) width;
+  float resolution = 2 * rounded_max_range / (float) width;
   int origin_offset = floor(image_width / 2.0);
   float origin_x = - origin_offset * resolution;
   float origin_y = - origin_offset * resolution;
@@ -31,7 +32,7 @@ nav_msgs::OccupancyGrid RangeMarkers(float max_range){
     cv::circle(img, image_center, circle_radius, cv::Scalar(0), 5);
     cv::Point image_center_shifted = cv::Point(image_origin_y - 50,
                                                image_origin_x - circle_radius - 20);
-    float displayed_range = round(i * max_range / num_circles * 100.0) / 100.0;
+    float displayed_range = round(i * rounded_max_range / num_circles * 100.0) / 100.0;
     // Set display format for range
     std::stringstream stream;
     stream << std::fixed << std::setprecision(2) << displayed_range << " m";
