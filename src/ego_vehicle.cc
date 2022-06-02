@@ -1,13 +1,12 @@
 #include "zendar_ros_driver/ego_vehicle.h"
 
 namespace zen {
-visualization_msgs::Marker EgoVehicle(
-    const zpb::tracker::message::TrackerState& tracker_state){
+visualization_msgs::Marker EgoVehicle(){
   visualization_msgs::Marker ego_vehicle_msg;
   // Define header
   ego_vehicle_msg.header.frame_id = "map";
-  ego_vehicle_msg.header.stamp = ros::Time(tracker_state.meta().timestamp());
-  ego_vehicle_msg.header.seq = (uint32_t)(tracker_state.meta().frame_id());
+  ego_vehicle_msg.header.stamp = ros::Time::now();
+  //ego_vehicle_msg.header.seq = (uint32_t)(tracker_state.meta().frame_id());
 
   // Define type of marker
   ego_vehicle_msg.type = 1;

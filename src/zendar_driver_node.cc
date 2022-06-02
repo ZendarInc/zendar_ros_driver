@@ -248,19 +248,15 @@ ZendarDriverNode::~ZendarDriverNode()
 void ZendarDriverNode::Run()
 {
   ros::Rate loop_rate(LOOP_RATE_HZ);
-  bool first_frame = true;
+  // Publish range markers, and ego vehicle once since they are latched topics
+  this->ProcessRangeMarkers();
+  this->ProcessEgoVehicle();
   while (node->ok()) {
     this->ProcessImages();
     this->ProcessPointClouds();
     this->ProcessPoseMessages();
     this->ProcessLogMessages();
     this->ProcessHousekeepingReports();
-    // Publish range markers, and ego vehicle once since they are latched topics
-    if (first_frame) {
-      this->ProcessRangeMarkers();
-      this->ProcessEgoVehicle();
-      first_frame = false;
-    }
     loop_rate.sleep();
   }
 }
@@ -324,18 +320,14 @@ ZendarDriverNode::ProcessPointClouds()
 
 void ZendarDriverNode::ProcessRangeMarkers()
 {
-  while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
-    auto range_markers = RangeMarkers(*tracker_state, max_range);
-    this->range_markers_pub.publish(range_markers);
-  }
+  auto range_markers = RangeMarkers(max_range);
+  this->range_markers_pub.publish(range_markers);
 }
 
 void ZendarDriverNode::ProcessEgoVehicle()
 {
-  while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
-    auto ego_vehicle = EgoVehicle(*tracker_state);
-    this->ego_vehicle_pub.publish(ego_vehicle);
-  }
+  auto ego_vehicle = EgoVehicle();
+  this->ego_vehicle_pub.publish(ego_vehicle);
 }
 
 void

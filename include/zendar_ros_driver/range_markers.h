@@ -9,7 +9,6 @@
 #include <zendar/api/api.h>
 
 namespace zen {
-nav_msgs::OccupancyGrid RangeMarkers(
-    const zpb::tracker::message::TrackerState& tracker_state, float max_range);
+nav_msgs::OccupancyGrid RangeMarkers(float max_range);
 } // namespace zen
 #endif // RANGE_MARKERS_H_

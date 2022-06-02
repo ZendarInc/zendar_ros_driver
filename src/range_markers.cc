@@ -1,8 +1,7 @@
 #include "zendar_ros_driver/range_markers.h"
 
 namespace zen {
-nav_msgs::OccupancyGrid RangeMarkers(
-    const zpb::tracker::message::TrackerState& tracker_state, float max_range){
+nav_msgs::OccupancyGrid RangeMarkers(float max_range){
   int num_circles = floor(max_range / 10);
   // Define the width, and height of the image (in pixel). This way of 
   // computing the number of pixels is done since for a max_range of 40, a 
@@ -42,14 +41,12 @@ nav_msgs::OccupancyGrid RangeMarkers(
   // Flip, and rotate image to counter transformations made in ros/webviz
   cv::flip(img, img, 0);
   cv::rotate(img, img, cv::ROTATE_90_COUNTERCLOCKWISE);
-
   nav_msgs::OccupancyGrid grid_msg;
   // Define header
   grid_msg.header.frame_id = "map";
-  grid_msg.header.stamp = ros::Time(tracker_state.meta().timestamp());
-  grid_msg.header.seq = (uint32_t)(tracker_state.meta().frame_id());
+  grid_msg.header.stamp = ros::Time::now();
   // Define metadata
-  grid_msg.info.map_load_time = ros::Time(tracker_state.meta().timestamp());
+  grid_msg.info.map_load_time = ros::Time::now();
   grid_msg.info.resolution = resolution;
   grid_msg.info.width = image_width;
   grid_msg.info.height = image_height;

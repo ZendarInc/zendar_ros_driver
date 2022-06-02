@@ -159,7 +159,6 @@ target_link_libraries(
   zendar_common
   shared_protobuf
   pthread
-  #opencv_imgproc
   ${GFLAGS_LIBRARIES}
   ${GLOG_LIBRARIES}
   ${PROTOBUF_LIBRARIES}

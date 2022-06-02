@@ -6,7 +6,6 @@
 #include <zendar/api/api.h>
 
 namespace zen {
-visualization_msgs::Marker EgoVehicle(
-    const zpb::tracker::message::TrackerState& tracker_state);
+visualization_msgs::Marker EgoVehicle();
 } // namespace zen
 #endif // EGO_VEHICLE_H_
