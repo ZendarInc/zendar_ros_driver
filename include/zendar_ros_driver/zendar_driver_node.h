@@ -2,12 +2,15 @@
 
 #include "zendar_ros_driver/publish.h"
 
+
 #include <zendar/api/api.h>
 
 #include <diagnostic_msgs/DiagnosticArray.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <rosgraph_msgs/Log.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <visualization_msgs/Marker.h>
 
 
 /// \namespace -----------------------------------------------------------------
@@ -54,8 +57,10 @@ private:
   ros::Publisher pose_quality_pub = this->node->advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 100);
 
   // Create range marker, and ego vehicle publisher as latched topics
-  ros::Publisher range_markers_pub = node.advertise<nav_msgs::OccupancyGrid>("/range_markers", 1, true);
-  ros::Publisher ego_vehicle_pub = node.advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
+  ros::Publisher range_markers_pub 
+    = this->node->advertise<nav_msgs::OccupancyGrid>("/range_markers", 1, true);
+  ros::Publisher ego_vehicle_pub = 
+    this->node->advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
 
   const std::string url;
   const float max_range;

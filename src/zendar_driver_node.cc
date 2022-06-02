@@ -1,5 +1,7 @@
 #include "zendar_ros_driver/zendar_driver_node.h"
 #include "zendar_ros_driver/zendar_point.h"
+#include "zendar_ros_driver/range_markers.h"
+#include "zendar_ros_driver/ego_vehicle.h"
 
 // #include <ros/ros.h>
 // #include <diagnostic_msgs/DiagnosticArray.h>
@@ -324,7 +326,7 @@ void ZendarDriverNode::ProcessRangeMarkers()
 {
   while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
     auto range_markers = RangeMarkers(*tracker_state, max_range);
-    this->range_markers_pub.Publish(range_markers);
+    this->range_markers_pub.publish(range_markers);
   }
 }
 
@@ -332,7 +334,7 @@ void ZendarDriverNode::ProcessEgoVehicle()
 {
   while (auto tracker_state = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
     auto ego_vehicle = EgoVehicle(*tracker_state);
-    this->ego_vehicle_pub.Publish(ego_vehicle);
+    this->ego_vehicle_pub.publish(ego_vehicle);
   }
 }
 

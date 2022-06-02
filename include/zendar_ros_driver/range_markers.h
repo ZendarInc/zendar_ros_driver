@@ -6,10 +6,10 @@
 #include <geometry_msgs/Quaternion.h>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
-#include "zendar/common/protocol.h"
-
+#include <zendar/api/api.h>
 
 namespace zen {
-nav_msgs::OccupancyGrid RangeMarkers(const zpb::tracker::message::TrackerState& tracker_state, const float max_range);
+nav_msgs::OccupancyGrid RangeMarkers(
+    const zpb::tracker::message::TrackerState& tracker_state, float max_range);
 } // namespace zen
 #endif // RANGE_MARKERS_H_
