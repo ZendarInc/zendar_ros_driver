@@ -251,6 +251,8 @@ void ZendarDriverNode::Run()
   // Publish range markers, and ego vehicle once since they are latched topics
   this->ProcessRangeMarkers();
   this->ProcessEgoVehicle();
+  // Publish transforms
+  this->ProcessTransforms();
   while (node->ok()) {
     this->ProcessImages();
     this->ProcessPointClouds();
@@ -258,6 +260,45 @@ void ZendarDriverNode::Run()
     this->ProcessLogMessages();
     this->ProcessHousekeepingReports();
     loop_rate.sleep();
+  }
+}
+
+void PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
+  // Extract extrinsics from id
+  std::string radar_serial = id.serial();
+  ros::Transform extrinsic;
+  tf::Vector3 translation_vec =
+    tf::Vector3(id.mutable_extrinsic()->mutable_t()->get_x(),
+                id.mutable_extrinsic()->mutable_t()->get_y(),
+                id.mutable_extrinsic()->mutable_t()->get_z());
+  extrinsic.setOrigin(translation_vec);
+  tf::Quaternion rotation;
+  rotation.setRotation(translation_vec,
+                       id.mutable_extrinsic()->mutable_t()->get_w());
+  extrinsic.setRotation(rotation);
+  //Publish extrinsics
+  tf::StampedTransform stamped_extrinsic =
+    tf::StampedTransform(extrinsic, ros::Time::now(), "vehicle", radar_serial);
+  std::vector<tf::StampedTransform> extrinsic_transforms;
+  this->extrinsics_pub.sendTransform(extrinsic_transforms);
+}
+
+void ZendarDriverNode::ProcessTransforms()
+{
+  while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
+    switch (hk_report->report_case()) {
+    case zpb::telem::HousekeepingReport::kSensorIdentity:
+      PublishExtrinsics(report->sensor_identity());
+      break;
+
+    case zpb::telem::HousekeepingReport::kHeartbeat:
+    case zpb::telem::HousekeepingReport::kImagingStatus:
+    case zpb::telem::HousekeepingReport::kGpsStatus:
+    default:
+      VLOG(1)
+      << "Housekeeping report processing not implemented."
+      << "{ type: " << hk_report->report_case() << " }.";
+      break;
   }
 }
 

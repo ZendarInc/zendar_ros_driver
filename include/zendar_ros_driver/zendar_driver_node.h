@@ -2,7 +2,6 @@
 
 #include "zendar_ros_driver/publish.h"
 
-
 #include <zendar/api/api.h>
 
 #include <diagnostic_msgs/DiagnosticArray.h>
@@ -11,6 +10,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <visualization_msgs/Marker.h>
+#include <tf/transform_datatypes.h>
 
 
 /// \namespace -----------------------------------------------------------------
@@ -40,6 +40,7 @@ private:
   void ProcessHousekeepingReports();
   void ProcessRangeMarkers();
   void ProcessEgoVehicle();
+  void ProcessTransforms();
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
 
@@ -57,10 +58,12 @@ private:
   ros::Publisher pose_quality_pub = this->node->advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 100);
 
   // Create range marker, and ego vehicle publisher as latched topics
-  ros::Publisher range_markers_pub 
+  ros::Publisher range_markers_pub
     = this->node->advertise<nav_msgs::OccupancyGrid>("/range_markers", 1, true);
-  ros::Publisher ego_vehicle_pub = 
+  ros::Publisher ego_vehicle_pub =
     this->node->advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
+
+  static tf::TransformBroadcaster extrinsics_pub;
 
   const std::string url;
   const float max_range;
