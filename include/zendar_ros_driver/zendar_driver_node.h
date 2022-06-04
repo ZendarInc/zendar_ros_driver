@@ -10,8 +10,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <visualization_msgs/Marker.h>
-#include <tf/transform_datatypes.h>
-
+#include <tf2_ros/transform_broadcaster.h>
 
 /// \namespace -----------------------------------------------------------------
 namespace zen {
@@ -43,6 +42,7 @@ private:
   void ProcessTransforms();
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
+  void PublishExtrinsics(const zpb::telem::SensorIdentity& id);
 
 private:
   std::shared_ptr<ros::NodeHandle> node;
@@ -63,7 +63,7 @@ private:
   ros::Publisher ego_vehicle_pub =
     this->node->advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
 
-  static tf::TransformBroadcaster extrinsics_pub;
+  static tf2_ros::TransformBroadcaster extrinsics_pub;
 
   const std::string url;
   const float max_range;

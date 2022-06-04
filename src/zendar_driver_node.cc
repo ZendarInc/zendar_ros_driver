@@ -13,7 +13,9 @@
 #include <pcl_ros/point_cloud.h>
 
 #include <glog/logging.h>
-
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2/LinearMath/Transform.h>
+#include <geometry_msgs/TransformStamped.h>
 
 #include <vector>
 
@@ -263,23 +265,20 @@ void ZendarDriverNode::Run()
   }
 }
 
-void PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
-  // Extract extrinsics from id
-  std::string radar_serial = id.serial();
-  ros::Transform extrinsic;
-  tf::Vector3 translation_vec =
-    tf::Vector3(id.mutable_extrinsic()->mutable_t()->get_x(),
-                id.mutable_extrinsic()->mutable_t()->get_y(),
-                id.mutable_extrinsic()->mutable_t()->get_z());
-  extrinsic.setOrigin(translation_vec);
-  tf::Quaternion rotation;
-  rotation.setRotation(translation_vec,
-                       id.mutable_extrinsic()->mutable_t()->get_w());
-  extrinsic.setRotation(rotation);
-  //Publish extrinsics
-  tf::StampedTransform stamped_extrinsic =
-    tf::StampedTransform(extrinsic, ros::Time::now(), "vehicle", radar_serial);
-  std::vector<tf::StampedTransform> extrinsic_transforms;
+void ZendarDriverNode::PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
+  geometry_msgs::TransformStamped extrinsic_stamped;
+  extrinsic_stamped.header.stamp = ros::Time::now();
+  extrinsic_stamped.header.frame_id = "vehicle";
+  extrinsic_stamped.child_frame_id = id.serial();
+  extrinsic_stamped.transform.translation.x = id.extrinsic().t().x();
+  extrinsic_stamped.transform.translation.y = id.extrinsic().t().y();
+  extrinsic_stamped.transform.translation.z = id.extrinsic().t().z();
+  extrinsic_stamped.transform.rotation.x = id.extrinsic().r().x();
+  extrinsic_stamped.transform.rotation.y = id.extrinsic().r().y();
+  extrinsic_stamped.transform.rotation.z = id.extrinsic().r().z();
+  extrinsic_stamped.transform.rotation.w = id.extrinsic().r().w();
+
+  std::vector<geometry_msgs::TransformStamped> extrinsic_transforms;
   this->extrinsics_pub.sendTransform(extrinsic_transforms);
 }
 
@@ -288,7 +287,7 @@ void ZendarDriverNode::ProcessTransforms()
   while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
     switch (hk_report->report_case()) {
     case zpb::telem::HousekeepingReport::kSensorIdentity:
-      PublishExtrinsics(report->sensor_identity());
+      PublishExtrinsics(hk_report->sensor_identity());
       break;
 
     case zpb::telem::HousekeepingReport::kHeartbeat:
@@ -299,6 +298,7 @@ void ZendarDriverNode::ProcessTransforms()
       << "Housekeeping report processing not implemented."
       << "{ type: " << hk_report->report_case() << " }.";
       break;
+    }
   }
 }
 
