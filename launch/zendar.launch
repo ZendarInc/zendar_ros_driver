@@ -2,7 +2,7 @@
   <!--ROSBRIDGE SERVER FOR WEBVIZ-->
   <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
     <!--START TRANSFORM PUBLISHER-->
-  <include file="$(find zendar_ros_driver)/launch/static_tf_publisher.launch"/>
+  <!--<include file="$(find zendar_ros_driver)/launch/static_tf_publisher.launch"/>-->
   <!--START SAR AND POINTCLOUD-->
   <arg name="target_url" default="192.168.1.9"/>
   <arg name="max_range" default="40"/>

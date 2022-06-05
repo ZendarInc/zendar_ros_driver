@@ -279,25 +279,29 @@ void ZendarDriverNode::PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
   extrinsic_stamped.transform.rotation.w = id.extrinsic().r().w();
 
   std::vector<geometry_msgs::TransformStamped> extrinsic_transforms;
-  this->extrinsics_pub.sendTransform(extrinsic_transforms);
+  this->extrinsics_pub.sendTransform(extrinsic_stamped);
 }
 
 void ZendarDriverNode::ProcessTransforms()
 {
-  while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
-    switch (hk_report->report_case()) {
-    case zpb::telem::HousekeepingReport::kSensorIdentity:
-      PublishExtrinsics(hk_report->sensor_identity());
-      break;
+  bool firstSensorIdentityReport = true;
+  while (firstSensorIdentityReport) {
+    while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
+      switch (hk_report->report_case()) {
+      case zpb::telem::HousekeepingReport::kSensorIdentity:
+        PublishExtrinsics(hk_report->sensor_identity());
+        firstSensorIdentityReport = false;
+        break;
 
-    case zpb::telem::HousekeepingReport::kHeartbeat:
-    case zpb::telem::HousekeepingReport::kImagingStatus:
-    case zpb::telem::HousekeepingReport::kGpsStatus:
-    default:
-      VLOG(1)
-      << "Housekeeping report processing not implemented."
-      << "{ type: " << hk_report->report_case() << " }.";
-      break;
+      case zpb::telem::HousekeepingReport::kHeartbeat:
+      case zpb::telem::HousekeepingReport::kImagingStatus:
+      case zpb::telem::HousekeepingReport::kGpsStatus:
+      default:
+        VLOG(1)
+        << "Housekeeping report processing not implemented."
+        << "{ type: " << hk_report->report_case() << " }.";
+        break;
+      }
     }
   }
 }
