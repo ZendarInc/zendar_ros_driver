@@ -278,19 +278,44 @@ void ZendarDriverNode::PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
   extrinsic_stamped.transform.rotation.z = id.extrinsic().r().z();
   extrinsic_stamped.transform.rotation.w = id.extrinsic().r().w();
 
-  std::vector<geometry_msgs::TransformStamped> extrinsic_transforms;
   this->extrinsics_pub.sendTransform(extrinsic_stamped);
 }
+void ZendarDriverNode::PublishVehicleToMap()
+{
+  geometry_msgs::TransformStamped veh_to_map_stamped;
+  veh_to_map_stamped.header.stamp = ros::Time::now();
+  veh_to_map_stamped.header.frame_id = "map";
+  veh_to_map_stamped.child_frame_id = "vehicle";
+  veh_to_map_stamped.transform.translation.x = 0;
+  veh_to_map_stamped.transform.translation.y = 0;
+  veh_to_map_stamped.transform.translation.z = 0;
+  veh_to_map_stamped.transform.rotation.x = 0;
+  veh_to_map_stamped.transform.rotation.y = 0;
+  veh_to_map_stamped.transform.rotation.z = 0;
+  veh_to_map_stamped.transform.rotation.w = 1;
 
+  this->vehicle_to_map_pub.sendTransform(veh_to_map_stamped);
+
+}
 void ZendarDriverNode::ProcessTransforms()
 {
-  bool firstSensorIdentityReport = true;
-  while (firstSensorIdentityReport) {
+  // Publish vehicle to map
+  PublishVehicleToMap();
+  // Publish extrinsics
+  int num_radars = 4;
+  std::set<std::string> radar_serials;
+  std::string radar_serial;
+  while (radar_serials.size() < num_radars) {
     while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
       switch (hk_report->report_case()) {
       case zpb::telem::HousekeepingReport::kSensorIdentity:
-        PublishExtrinsics(hk_report->sensor_identity());
-        firstSensorIdentityReport = false;
+        radar_serial = hk_report->sensor_identity().serial();
+        // Check if radar serial was already published
+        if (radar_serials.find(radar_serial) == radar_serials.end()) {
+          // If not already published, publish
+          PublishExtrinsics(hk_report->sensor_identity());
+          radar_serials.insert(radar_serial);
+        }
         break;
 
       case zpb::telem::HousekeepingReport::kHeartbeat:

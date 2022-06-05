@@ -43,6 +43,7 @@ private:
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
   void PublishExtrinsics(const zpb::telem::SensorIdentity& id);
+  void PublishVehicleToMap();
 
 private:
   std::shared_ptr<ros::NodeHandle> node;
@@ -64,6 +65,7 @@ private:
     this->node->advertise<visualization_msgs::Marker>("/ego_vehicle", 1, true);
 
   tf2_ros::StaticTransformBroadcaster extrinsics_pub;
+  tf2_ros::StaticTransformBroadcaster vehicle_to_map_pub;
 
   const std::string url;
   const float max_range;
