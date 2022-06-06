@@ -67,6 +67,8 @@ private:
   tf2_ros::StaticTransformBroadcaster extrinsics_pub;
   tf2_ros::StaticTransformBroadcaster vehicle_to_map_pub;
 
+  std::set<std::string> serials;
+
   const std::string url;
   const float max_range;
 };

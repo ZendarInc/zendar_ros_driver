@@ -302,31 +302,27 @@ void ZendarDriverNode::ProcessTransforms()
   // Publish vehicle to map
   PublishVehicleToMap();
   // Publish extrinsics
-  int num_radars = 4;
-  std::set<std::string> radar_serials;
-  std::string radar_serial;
-  while (radar_serials.size() < num_radars) {
-    while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
-      switch (hk_report->report_case()) {
-      case zpb::telem::HousekeepingReport::kSensorIdentity:
-        radar_serial = hk_report->sensor_identity().serial();
-        // Check if radar serial was already published
-        if (radar_serials.find(radar_serial) == radar_serials.end()) {
-          // If not already published, publish
-          PublishExtrinsics(hk_report->sensor_identity());
-          radar_serials.insert(radar_serial);
-        }
-        break;
-
-      case zpb::telem::HousekeepingReport::kHeartbeat:
-      case zpb::telem::HousekeepingReport::kImagingStatus:
-      case zpb::telem::HousekeepingReport::kGpsStatus:
-      default:
-        VLOG(1)
-        << "Housekeeping report processing not implemented."
-        << "{ type: " << hk_report->report_case() << " }.";
-        break;
+  std::string serial;
+  while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
+    switch (hk_report->report_case()) {
+    case zpb::telem::HousekeepingReport::kSensorIdentity:
+      serial = hk_report->sensor_identity().serial();
+      // Check if radar serial was already published
+      if (serials.find(serial) == serials.end()) {
+        // If not already published, publish
+        PublishExtrinsics(hk_report->sensor_identity());
+        serials.insert(serial);
       }
+      break;
+
+    case zpb::telem::HousekeepingReport::kHeartbeat:
+    case zpb::telem::HousekeepingReport::kImagingStatus:
+    case zpb::telem::HousekeepingReport::kGpsStatus:
+    default:
+      VLOG(1)
+      << "Housekeeping report processing not implemented."
+      << "{ type: " << hk_report->report_case() << " }.";
+      break;
     }
   }
 }
@@ -369,7 +365,10 @@ ZendarDriverNode::ProcessPointClouds()
 {
   while (auto points = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
     const auto& serial = points->meta().serial();
-
+    // Publish/Create transforms
+    if (serials.find(serial) == serials.end()) {
+      this->ProcessTransforms();
+    }
     auto cloud2 = ConvertToPointCloud2(*points);
 
     cloud2.header.seq = (uint32_t)(points->meta().frame_id());
