@@ -26,7 +26,7 @@ sudo apt install pcl protobuf-compiler libpcl-dev libgoogle-glog-dev ros-noetic-
 #### Install Zendar Host Package
 Install the host package supplied by Zendar with the following command:
 ```
-sudo -i package_name.deb
+sudo apt install ./zendar_host_latest.deb
 ```
 
 ### Setup zendar_ros_driver Repository
@@ -34,22 +34,14 @@ Clone the zendar_ros_driver repository:
 ```
 git@github.com:ZendarInc/zendar_ros_driver.git
 ```
-Define an environment variable in your shell environment by adding the following line to your .bashrc script (typically in ~/.bashrc):
-```
-export ZEN_ROS_DRIVER=/path/to/zendar_ros_driver
-```
-For example if you cloned the repository from ~:
-```
-export ZEN_ROS_DRIVER=~/zendar_ros_driver
-```
 Source your .bash_profile:
 ```
 source ~/.bash_profile
 ```
 ## Build Instructions
-Go into ZEN_ROS_DRIVER (see setup instructions for details):
+Go into the zen_ros_driver repository:
 ```
-cd $ZEN_ROS_DRIVER
+cd /path_to_zendar_ros_driver/
 ```
 Create, and step into build folder:
 ```
@@ -65,7 +57,7 @@ make -j4
 ```
 Source the driver by adding the following line to your .bashrc script (typically in ~/.bashrc):
 ```
-source ${ZEN_ROS_DRIVER}/build/devel/setup.bash
+source /path_to_zendar_ros_driver/build/devel/setup.bash
 ```
 
 ## Running Zendar ROS Driver
