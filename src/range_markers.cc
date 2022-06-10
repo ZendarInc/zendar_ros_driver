@@ -20,7 +20,27 @@ nav_msgs::OccupancyGrid RangeMarkers(float max_range){
   float origin_x = - origin_offset * resolution;
   float origin_y = - origin_offset * resolution;
   int image_origin_x = round(image_width - origin_offset);
-  int image_origin_y = image_origin_x; 
+  int image_origin_y = image_origin_x;
+
+  cv::Mat img = CreateImg(
+                 image_height, image_width, width, image_origin_x, 
+                 image_origin_y, rounded_max_range, num_circles);  
+
+  nav_msgs::OccupancyGrid grid_msg = CreateRosMessage(
+                                       image_width, image_height, resolution,
+                                       origin_x, origin_y, img);
+
+  return grid_msg;
+}
+
+cv::Mat CreateImg(const int& image_height,
+                  const int& image_width,
+                  const int& width,
+                  const int& image_origin_x,
+                  const int& image_origin_y,
+                  const float& rounded_max_range,
+                  const int& num_circles) 
+{
   cv::Point image_center(image_origin_y, image_origin_x);
   // Because ros/webviz flips the colors, we draw black circles on a white 
   // image
@@ -42,6 +62,17 @@ nav_msgs::OccupancyGrid RangeMarkers(float max_range){
   // Flip, and rotate image to counter transformations made in ros/webviz
   cv::flip(img, img, 0);
   cv::rotate(img, img, cv::ROTATE_90_COUNTERCLOCKWISE);
+
+  return img;
+}
+
+nav_msgs::OccupancyGrid CreateRosMessage(const int& image_width,
+                                         const int& image_height, 
+                                         const float& resolution, 
+                                         const float& origin_x,
+                                         const float& origin_y,
+                                         cv::Mat img) 
+{
   nav_msgs::OccupancyGrid grid_msg;
   // Define header
   grid_msg.header.frame_id = "map";
