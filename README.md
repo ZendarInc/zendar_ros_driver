@@ -80,7 +80,7 @@ where URL needs to be replaced with the url of the ZPU.
 It is better to record only the necessary topics due to size and bandwidth limitations. 
 You can use the prepackaged launch file that records all necessary topics by running the following command anywhere in the terminal.
 ```
-roslaunch zensystems rosbag_save.launch output_name:=/home/zendar_data/record.bag
+roslaunch zendar_ros_driver rosbag_save.launch output_name:=/home/zendar_data/record.bag
 ```
 The default storage location is the user’s home directory, and the date and time of the recording will be appended to the file name.
 
