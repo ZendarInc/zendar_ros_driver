@@ -6,7 +6,6 @@ visualization_msgs::Marker EgoVehicle(){
   // Define header
   ego_vehicle_msg.header.frame_id = "map";
   ego_vehicle_msg.header.stamp = ros::Time::now();
-  //ego_vehicle_msg.header.seq = (uint32_t)(tracker_state.meta().frame_id());
 
   // Define type of marker
   ego_vehicle_msg.type = 1;
