@@ -39,7 +39,7 @@ Source your .bash_profile:
 source ~/.bash_profile
 ```
 ## Build Instructions
-Go into the zen_ros_driver repository:
+Go into the zendar_ros_driver repository:
 ```
 cd /path_to_zendar_ros_driver/
 ```
