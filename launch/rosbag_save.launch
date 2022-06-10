@@ -1,12 +1,9 @@
 <launch>
   <arg name="output_name" default="$(env HOME)/record.bag"/>
-  <arg name="max_range" default="40"/>
   <node pkg="rosbag" type="record" name="record"
     args="record -o $(arg output_name)
             /rosout /rosout_agg /tf /tf_static /diagnostics /pose /zpu_logs
             -e /zendar_driver_node/points_(.*) /zendar_driver_node/image_(.*)/compressed
-            /zendar_driver_node/points_metadata_(.*)"
+            /zendar_driver_node/points_metadata_(.*) /range_markers /ego_vehicle"
   />
-  <node pkg="zendar_ros_driver" type="zendar_driver_node" name="zendar_driver_node">
-    <param name="max_range" type="double" value="$(arg max_range)"/>
 </launch>
