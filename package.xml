@@ -3,7 +3,7 @@
   <name>zendar_ros_driver</name>
   <version>0.0.0</version>
   <description>The zendar_ros_driver package</description>
-  <maintainer email="slau@zendar.io">slau</maintainer>
+  <maintainer email="hlittle@zendar.io">slau</maintainer>
 
   <license>MIT</license>
   <buildtool_depend>catkin</buildtool_depend>
