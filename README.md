@@ -41,7 +41,7 @@ source ~/.bash_profile
 ## Build Instructions
 Go into the zendar_ros_driver repository:
 ```
-cd /path_to_zendar_ros_driver/
+cd /PATH_TO_ZENDAR_ROS_DRIVER/
 ```
 Create, and step into build folder:
 ```
@@ -57,7 +57,7 @@ make -j4
 ```
 Source the driver by adding the following line to your .bashrc script (typically in ~/.bashrc):
 ```
-source /path_to_zendar_ros_driver/build/devel/setup.bash
+source /PATH_TO_ZENDAR_ROS_DRIVER/build/devel/setup.bash
 ```
 
 ## Running Zendar ROS Driver
