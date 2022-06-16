@@ -39,10 +39,10 @@ private:
   void ProcessHousekeepingReports();
   void ProcessRangeMarkers();
   void ProcessEgoVehicle();
-  void ProcessTransforms();
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
-  void PublishExtrinsics(const zpb::telem::SensorIdentity& id);
+  void ProcessHKSensorIdentity(const zpb::telem::HousekeepingReport& report);
+  void PublishExtrinsic(const zpb::telem::SensorIdentity& id);
   void PublishVehicleToMap();
 
 private:

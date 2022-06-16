@@ -63,7 +63,7 @@ struct ImageNormal
       downsampled_data.end()
     );
     std::sort(downsampled_data.begin(), downsampled_data.end());
-    
+
     this->min = downsampled_data.front();
     this->med = downsampled_data.at(downsampled_data.size() / 2);
     this->max = downsampled_data.back();
@@ -250,11 +250,14 @@ ZendarDriverNode::~ZendarDriverNode()
 void ZendarDriverNode::Run()
 {
   ros::Rate loop_rate(LOOP_RATE_HZ);
+
   // Publish range markers, and ego vehicle once since they are latched topics
   this->ProcessRangeMarkers();
   this->ProcessEgoVehicle();
-  // Publish transforms
-  this->ProcessTransforms();
+
+  // Publish vehicle to map transform
+  PublishVehicleToMap();
+
   while (node->ok()) {
     this->ProcessImages();
     this->ProcessPointClouds();
@@ -265,75 +268,13 @@ void ZendarDriverNode::Run()
   }
 }
 
-void ZendarDriverNode::PublishExtrinsics(const zpb::telem::SensorIdentity& id) {
-  geometry_msgs::TransformStamped extrinsic_stamped;
-  extrinsic_stamped.header.stamp = ros::Time::now();
-  extrinsic_stamped.header.frame_id = "vehicle";
-  extrinsic_stamped.child_frame_id = id.serial();
-  extrinsic_stamped.transform.translation.x = id.extrinsic().t().x();
-  extrinsic_stamped.transform.translation.y = id.extrinsic().t().y();
-  extrinsic_stamped.transform.translation.z = id.extrinsic().t().z();
-  extrinsic_stamped.transform.rotation.x = id.extrinsic().r().x();
-  extrinsic_stamped.transform.rotation.y = id.extrinsic().r().y();
-  extrinsic_stamped.transform.rotation.z = id.extrinsic().r().z();
-  extrinsic_stamped.transform.rotation.w = id.extrinsic().r().w();
-
-  this->extrinsics_pub.sendTransform(extrinsic_stamped);
-}
-void ZendarDriverNode::PublishVehicleToMap()
-{
-  geometry_msgs::TransformStamped veh_to_map_stamped;
-  veh_to_map_stamped.header.stamp = ros::Time::now();
-  veh_to_map_stamped.header.frame_id = "map";
-  veh_to_map_stamped.child_frame_id = "vehicle";
-  veh_to_map_stamped.transform.translation.x = 0;
-  veh_to_map_stamped.transform.translation.y = 0;
-  veh_to_map_stamped.transform.translation.z = 0;
-  veh_to_map_stamped.transform.rotation.x = 0;
-  veh_to_map_stamped.transform.rotation.y = 0;
-  veh_to_map_stamped.transform.rotation.z = 0;
-  veh_to_map_stamped.transform.rotation.w = 1;
-
-  this->vehicle_to_map_pub.sendTransform(veh_to_map_stamped);
-
-}
-void ZendarDriverNode::ProcessTransforms()
-{
-  // Publish vehicle to map
-  PublishVehicleToMap();
-  // Publish extrinsics
-  std::string serial;
-  while (auto hk_report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
-    switch (hk_report->report_case()) {
-    case zpb::telem::HousekeepingReport::kSensorIdentity:
-      serial = hk_report->sensor_identity().serial();
-      // Check if radar serial was already published
-      if (serials.find(serial) == serials.end()) {
-        // If not already published, publish
-        PublishExtrinsics(hk_report->sensor_identity());
-        serials.insert(serial);
-      }
-      break;
-
-    case zpb::telem::HousekeepingReport::kHeartbeat:
-    case zpb::telem::HousekeepingReport::kImagingStatus:
-    case zpb::telem::HousekeepingReport::kGpsStatus:
-    default:
-      VLOG(1)
-      << "Housekeeping report processing not implemented."
-      << "{ type: " << hk_report->report_case() << " }.";
-      break;
-    }
-  }
-}
-
 void ZendarDriverNode::ProcessImages()
 {
   while (auto image = ZenApi::NextImage(ZenApi::NO_WAIT)) {
     auto image_type = image->cartesian().data().type();
     if (image_type != zpb::data::ImageDataCartesian_Type_REAL_32U) {
       ROS_WARN(
-        "Only \"REAL_32U\" image type is supported, got type \"%s\" instead.", 
+        "Only \"REAL_32U\" image type is supported, got type \"%s\" instead.",
         std::to_string(image_type).c_str());
       continue;
     }
@@ -365,10 +306,6 @@ ZendarDriverNode::ProcessPointClouds()
 {
   while (auto points = ZenApi::NextTrackerState(ZenApi::NO_WAIT)) {
     const auto& serial = points->meta().serial();
-    // Publish/Create transforms
-    if (serials.find(serial) == serials.end()) {
-      this->ProcessTransforms();
-    }
     auto cloud2 = ConvertToPointCloud2(*points);
 
     cloud2.header.seq = (uint32_t)(points->meta().frame_id());
@@ -450,6 +387,7 @@ ZendarDriverNode::ProcessHousekeepingReports()
 {
   while (auto report = ZenApi::NextHousekeepingReport(ZenApi::NO_WAIT)) {
     this->ProcessHKGpsStatus(*report);
+    this->ProcessHKSensorIdentity(*report);
     // other HK subtypes
   }
 }
@@ -496,6 +434,55 @@ ZendarDriverNode::ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& repor
   diagnostics.status.push_back(ins_status);
 
   this->pose_quality_pub.publish(diagnostics);
+}
+
+void ZendarDriverNode::ProcessHKSensorIdentity(const zpb::telem::HousekeepingReport& report)
+{
+  if (report.report_case() != zpb::telem::HousekeepingReport::kSensorIdentity) {
+    return;
+  }
+
+  std::string serial = report.sensor_identity().serial();
+  if (serials.find(serial) == serials.end()) {
+    // Extrinsic already published
+    return;
+  }
+
+  PublishExtrinsic(report.sensor_identity());
+  serials.insert(serial);
+}
+
+void ZendarDriverNode::PublishExtrinsic(const zpb::telem::SensorIdentity& id) {
+  geometry_msgs::TransformStamped extrinsic_stamped;
+  extrinsic_stamped.header.stamp = ros::Time::now();
+  extrinsic_stamped.header.frame_id = "vehicle";
+  extrinsic_stamped.child_frame_id = id.serial();
+  extrinsic_stamped.transform.translation.x = id.extrinsic().t().x();
+  extrinsic_stamped.transform.translation.y = id.extrinsic().t().y();
+  extrinsic_stamped.transform.translation.z = id.extrinsic().t().z();
+  extrinsic_stamped.transform.rotation.x = id.extrinsic().r().x();
+  extrinsic_stamped.transform.rotation.y = id.extrinsic().r().y();
+  extrinsic_stamped.transform.rotation.z = id.extrinsic().r().z();
+  extrinsic_stamped.transform.rotation.w = id.extrinsic().r().w();
+
+  this->extrinsics_pub.sendTransform(extrinsic_stamped);
+}
+
+void ZendarDriverNode::PublishVehicleToMap()
+{
+  geometry_msgs::TransformStamped veh_to_map_stamped;
+  veh_to_map_stamped.header.stamp = ros::Time::now();
+  veh_to_map_stamped.header.frame_id = "map";
+  veh_to_map_stamped.child_frame_id = "vehicle";
+  veh_to_map_stamped.transform.translation.x = 0;
+  veh_to_map_stamped.transform.translation.y = 0;
+  veh_to_map_stamped.transform.translation.z = 0;
+  veh_to_map_stamped.transform.rotation.x = 0;
+  veh_to_map_stamped.transform.rotation.y = 0;
+  veh_to_map_stamped.transform.rotation.z = 0;
+  veh_to_map_stamped.transform.rotation.w = 1;
+
+  this->vehicle_to_map_pub.sendTransform(veh_to_map_stamped);
 }
 
 }  // namespace zen
