@@ -75,6 +75,12 @@ roslaunch zendar_ros_driver rosbag_save.launch output_name:=/home/zendar_data/re
 ```
 The default storage location is the user’s home directory, and the date and time of the recording will be appended to the file name.
 
+### Optional command line arguments
+Each of the following arguments can be appended to the above roslaunch-commands with `argument:=value`.
+
+| Argument                       |                                                                        Description        |
+|--------------------------------|:-----------------------------------------------------------------------------------------:|
+| `max_range`                    | Specifies the maximum range for the displayed range markers. By default it is set to 40m. |   
 ## Useful ROS Commands
 
 | Command                                                                |                                                                                       Description                                                                                        |
