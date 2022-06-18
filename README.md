@@ -81,6 +81,10 @@ Each of the following arguments can be appended to the above roslaunch-commands 
 | Argument                       |                                                                                                                                                  Description                                                                                                                                                   |
 |--------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | `max_range`                    | Specifies the maximum range for the displayed range markers. The range markers will be displayed in 10m steps up to the largest number that is a multiple of 10 and smaller than the specified max range (e.g. if `max_range:=98` then the maximum displayed range will be 90m).  By default it is set to 40m. |   
+
+### Layouts
+Default WebViz layouts are located in the [layouts](https://github.com/ZendarInc/zendar_ros_driver/layouts) folder.
+
 ## Useful ROS Commands
 
 | Command                                                                |                                                                                       Description                                                                                        |

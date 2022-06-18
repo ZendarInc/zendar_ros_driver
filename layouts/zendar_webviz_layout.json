@@ -1,0 +1,67 @@
+{
+  "layout": {
+    "first": {
+      "first": "DiagnosticSummary!px6g8c",
+      "second": "ImageViewPanel!4ag2jxx",
+      "direction": "column",
+      "splitPercentage": 31.44208037825059
+    },
+    "second": "3D Panel!3p4luur",
+    "direction": "row",
+    "splitPercentage": 36.25
+  },
+  "savedProps": {
+    "ImageViewPanel!4ag2jxx": {
+      "enabledMarkerTopics": [],
+      "customMarkerTopicOptions": [],
+      "scale": 0.2,
+      "transformMarkers": true,
+      "synchronize": false,
+      "mode": "fit",
+      "zoomPercentage": 42.945544554455445,
+      "offset": [
+        0,
+        22.737623762376245
+      ]
+    },
+    "3D Panel!3p4luur": {
+      "checkedKeys": [
+        "name:Topics"
+      ],
+      "expandedKeys": [
+        "name:Topics"
+      ],
+      "followTf": "vehicle",
+      "cameraState": {
+        "targetOffset": [
+          16.357256413035827,
+          -0.8947644682340465,
+          0
+        ],
+        "distance": 61.63428652102432,
+        "perspective": true,
+        "phi": 0.013230429988974644,
+        "thetaOffset": 14.183950676715904,
+        "fovy": 0.7853981633974483,
+        "near": 0.01,
+        "far": 5000
+      },
+      "modifiedNamespaceTopics": [],
+      "pinTopics": false,
+      "settingsByKey": {
+      },
+      "autoSyncCameraState": false,
+      "autoTextBackgroundColor": true,
+      "followOrientation": false
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "linkedGlobalVariables": [],
+  "playbackConfig": {
+    "speed": 1,
+    "messageOrder": "receiveTime",
+    "timeDisplayMethod": "ROS"
+  },
+  "version": 19
+}
