@@ -443,7 +443,7 @@ void ZendarDriverNode::ProcessHKSensorIdentity(const zpb::telem::HousekeepingRep
   }
 
   std::string serial = report.sensor_identity().serial();
-  if (serials.find(serial) == serials.end()) {
+  if (serials.find(serial) != serials.end()) {
     // Extrinsic already published
     return;
   }
