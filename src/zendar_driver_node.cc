@@ -37,6 +37,10 @@ constexpr float IM_DYN_RANGE_MIN           = std::pow(10.0, (55.0 / 20.0));  ///
 ///< max value of image set to 99% of atan's output
 const float ATAN_SCALE_FACTOR          = std::tan(0.99 * M_PI_2);
 
+// Parameters for occupancy grid display
+const int OCCUPIED_VALUE = 0;
+const int UNOCCUPIED_VALUE = 100;
+
 struct ImageNormal
 {
   ImageNormal(
@@ -201,6 +205,40 @@ ConvertToPoseStamped(
   return pose_stamped_msg;
 }
 
+nav_msgs::OccupancyGrid
+ConvertToRosGrid(
+  const zpb::drivable_area::OccGridMessage& occ_grid) {
+    nav_msgs::OccupancyGrid grid_msg;
+    double timestamp = occ_grid.timestamp();
+    int width = occ_grid.ncols();
+    double res = occ_grid.grid_res();
+
+  grid_msg.header.frame_id = "map";
+  grid_msg.header.stamp = ros::Time(timestamp);
+  grid_msg.header.seq = occ_grid.seq();
+  grid_msg.info.map_load_time = ros::Time(timestamp);
+  grid_msg.info.resolution = res;
+  grid_msg.info.width = width;
+  grid_msg.info.height = width;
+
+  geometry_msgs::Pose pose;
+  pose.position.x = -width * res / 2;
+  pose.position.y = -width * res / 2;
+  pose.position.z = 0;
+  pose.orientation.x = 0;
+  pose.orientation.y = 0;
+  pose.orientation.z = 0;
+  pose.orientation.w = 1;
+  grid_msg.info.origin = pose;
+
+  for (int i = 0; i < width * width; i++) {
+    int val = occ_grid.grid(i) ?
+                  UNOCCUPIED_VALUE : OCCUPIED_VALUE;
+    grid_msg.data.push_back(val);
+  }
+  return grid_msg;
+}
+
 }  // namespace
 
 
@@ -229,6 +267,7 @@ ZendarDriverNode::ZendarDriverNode(
   api::ZenApi::SubscribeImages();
   api::ZenApi::SubscribeTrackerStates();
   api::ZenApi::SubscribeTracklogs();
+  api::ZenApi::SubscribeOccupancyGrid();
 
   api::ZenApi::SubscribeLogMessages(LOG_MSG_QUEUE);
   api::ZenApi::SubscribeHousekeepingReports();
@@ -239,6 +278,7 @@ ZendarDriverNode::~ZendarDriverNode()
   api::ZenApi::UnsubscribeImages();
   api::ZenApi::UnsubscribeTrackerStates();
   api::ZenApi::UnsubscribeTracklogs();
+  api::ZenApi::UnsubscribeOccupancyGrid();
 
   api::ZenApi::UnsubscribeLogMessages();
   api::ZenApi::UnsubscribeHousekeepingReports();
@@ -261,6 +301,7 @@ void ZendarDriverNode::Run()
   while (node->ok()) {
     this->ProcessImages();
     this->ProcessPointClouds();
+    this->ProcessOccupancyGrid();
     this->ProcessPoseMessages();
     this->ProcessLogMessages();
     this->ProcessHousekeepingReports();
@@ -324,6 +365,13 @@ ZendarDriverNode::ProcessPointClouds()
   }
 }
 
+void
+ZendarDriverNode::ProcessOccupancyGrid()
+{
+  while(auto occ_grid = ZenApi::NextOccupancyGrid(ZenApi::NO_WAIT)) {
+    this->occupancy_grid_pub.publish(ConvertToRosGrid(*occ_grid));
+  }
+}
 void ZendarDriverNode::ProcessRangeMarkers()
 {
   auto range_markers = RangeMarkers(max_range);

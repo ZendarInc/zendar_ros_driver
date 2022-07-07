@@ -39,6 +39,7 @@ private:
   void ProcessHousekeepingReports();
   void ProcessRangeMarkers();
   void ProcessEgoVehicle();
+  void ProcessOccupancyGrid();
 
   void ProcessHKGpsStatus(const zpb::telem::HousekeepingReport& report);
   void ProcessHKSensorIdentity(const zpb::telem::HousekeepingReport& report);
@@ -57,6 +58,8 @@ private:
   ros::Publisher logs_pub = this->node->advertise<rosgraph_msgs::Log>("/zpu_logs", 100);
 
   ros::Publisher pose_quality_pub = this->node->advertise<diagnostic_msgs::DiagnosticArray>("/diagnostics", 100);
+
+  ros::Publisher occupancy_grid_pub = this->node->advertise<nav_msgs::OccupancyGrid>("/occupancy_grid", 1);
 
   // Create range marker, and ego vehicle publisher as latched topics
   ros::Publisher range_markers_pub
