@@ -2,6 +2,7 @@
 #include "zendar_ros_driver/zendar_point.h"
 #include "zendar_ros_driver/range_markers.h"
 #include "zendar_ros_driver/ego_vehicle.h"
+#include "zendar_ros_driver/tracks.h"
 
 // #include <ros/ros.h>
 // #include <diagnostic_msgs/DiagnosticArray.h>
@@ -303,6 +304,7 @@ void ZendarDriverNode::Run()
     this->ProcessImages();
     this->ProcessPointClouds();
     this->ProcessOccupancyGrid();
+    this->ProcessTracks();
     this->ProcessPoseMessages();
     this->ProcessLogMessages();
     this->ProcessHousekeepingReports();
@@ -373,6 +375,15 @@ ZendarDriverNode::ProcessOccupancyGrid()
     this->occupancy_grid_pub.publish(ConvertToRosGrid(*occ_grid));
   }
 }
+
+void ZendarDriverNode::ProcessTracks()
+{
+  while (auto tracks = ZenApi::NextTracks(ZenApi::NO_WAIT)) {
+    auto tracks_msg = Tracks(*tracks);
+    this->tracks_pub.publish(tracks_msg);
+  }
+}
+
 void ZendarDriverNode::ProcessRangeMarkers()
 {
   auto range_markers = RangeMarkers(max_range);
